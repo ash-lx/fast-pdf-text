@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF Text Extractor</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 4px;
+        padding: 20px;
+        text-align: center;
+        margin: 20px 0;
+        background-color: #f9f9f9;
+        min-height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+      }
+      .drop-zone.dragover {
+        background-color: #e1e1e1;
+        border-color: #999;
+      }
+      #output {
+        white-space: pre-wrap;
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 20px;
+        min-height: 100px;
+        border: 1px solid #ddd;
+        font-family: monospace;
+        overflow-x: auto;
+        line-height: 1.5;
+      }
+      .loading {
+        display: none;
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        border-radius: 4px;
+        text-align: center;
+      }
+      .error {
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        display: none;
+      }
+      .stats {
+        background-color: #e7f3fe;
+        border: 1px solid #c2e0ff;
+        border-radius: 4px;
+        padding: 10px 15px;
+        margin: 20px 0;
+        display: none;
+        font-size: 14px;
+      }
+      .stats span {
+        font-weight: bold;
+        color: #0066cc;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PDF Text Extractor</h1>
+    <div class="error" id="errorDisplay"></div>
+    <div class="drop-zone" id="dropZone">
+      <p>Drag & Drop your PDF file here or click to select</p>
+      <input type="file" id="fileInput" accept=".pdf" style="display: none" />
+    </div>
+    <div class="loading" id="loading">
+      <p>Processing PDF... Please wait</p>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div id="output"></div>
+
+    <script type="module">
+      import init, { ResumeParser } from "./pkg/resume_parser.js";
+
+      let wasmModule;
+
+      async function initializeWasm() {
+        try {
+          wasmModule = await init();
+          console.log("WASM module initialized successfully");
+        } catch (error) {
+          showError("Failed to initialize WASM module: " + error.message);
+          console.error("WASM initialization error:", error);
+        }
+      }
+
+      function showError(message) {
+        const errorDisplay = document.getElementById("errorDisplay");
+        errorDisplay.textContent = message;
+        errorDisplay.style.display = "block";
+        setTimeout(() => {
+          errorDisplay.style.display = "none";
+        }, 5000);
+      }
+
+      async function run() {
+        await initializeWasm();
+
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+        const loading = document.getElementById("loading");
+        const output = document.getElementById("output");
+        const stats = document.getElementById("stats");
+        let parser;
+
+        try {
+          parser = new ResumeParser();
+          console.log("Parser created successfully");
+        } catch (error) {
+          showError("Failed to create parser: " + error.message);
+          console.error("Parser creation error:", error);
+          return;
+        }
+
+        // Handle drag and drop
+        dropZone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          dropZone.classList.add("dragover");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+          dropZone.classList.remove("dragover");
+        });
+
+        dropZone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dropZone.classList.remove("dragover");
+          const file = e.dataTransfer.files[0];
+          if (file) processFile(file);
+        });
+
+        // Handle click to select
+        dropZone.addEventListener("click", () => {
+          fileInput.click();
+        });
+
+        fileInput.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (file) processFile(file);
+        });
+
+        async function processFile(file) {
+          if (file.type !== "application/pdf") {
+            showError("Please select a PDF file");
+            return;
+          }
+
+          loading.style.display = "block";
+          output.textContent = "Starting processing...";
+          stats.style.display = "none";
+
+          const startTime = performance.now();
+
+          try {
+            console.log("Reading file...");
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            console.log("Parsing PDF...");
+            const result = await parser.parse_pdf(uint8Array);
+
+            const endTime = performance.now();
+            const processingTimeMs = endTime - startTime;
+
+            // Format time with appropriate units
+            let timeDisplay;
+            if (processingTimeMs < 1) {
+              timeDisplay = `${(processingTimeMs * 1000).toFixed(
+                2
+              )} microseconds`;
+            } else if (processingTimeMs < 1000) {
+              timeDisplay = `${processingTimeMs.toFixed(2)} milliseconds`;
+            } else {
+              timeDisplay = `${(processingTimeMs / 1000).toFixed(2)} seconds`;
+            }
+
+            // Display stats
+            stats.style.display = "block";
+            stats.innerHTML = `
+                        Processed <span>${result.page_count}</span> ${
+              result.page_count === 1 ? "page" : "pages"
+            } 
+                        in <span>${timeDisplay}</span>
+                    `;
+
+            // Display the extracted text
+            output.textContent = result.text;
+            console.log("Processing completed successfully");
+          } catch (error) {
+            showError("Error processing file: " + error.message);
+            console.error("Processing error:", error);
+            output.textContent = `Error: ${error.message}`;
+            stats.style.display = "none";
+          } finally {
+            loading.style.display = "none";
+          }
+        }
+      }
+
+      run().catch((error) => {
+        showError("Application initialization error: " + error.message);
+        console.error("Runtime error:", error);
+      });
+    </script>
+  </body>
+</html>
