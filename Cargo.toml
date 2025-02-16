@@ -1,5 +1,5 @@
 [package]
-name = "resume_parser"
+name = "pdftotext"
 version = "0.1.0"
 edition = "2021"
 

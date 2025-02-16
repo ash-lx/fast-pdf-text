@@ -1,0 +1,14 @@
+[build]
+  publish = "."
+  command = "wasm-pack build --target web"
+
+[[headers]]
+  for = "/pkg/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"

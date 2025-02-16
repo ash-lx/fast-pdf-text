@@ -16,15 +16,14 @@ pub struct ExtractionResult {
 }
 
 #[wasm_bindgen]
-pub struct ResumeParser;
+pub struct PDFToText;
 
 #[wasm_bindgen]
-impl ResumeParser {
+impl PDFToText {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         console_error_panic_hook::set_once();
-        log("ResumeParser instance created");
-        ResumeParser
+        log("PDFToText instance created");      PDFToText
     }
 
     #[wasm_bindgen]
