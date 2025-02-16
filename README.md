@@ -1,6 +1,12 @@
 # Project Title
 
-A brief description of your project.
+A crazy fast app to process 1000 page pdf to text in 1 second!! Deployed:https://fastpdftext.netlify.app
+
+TLDR: How I built it
+-> Rust + WebAssembly for blazing-fast PDF processing
+-> Simple drag-drop UI with vanilla JavaScript
+-> Zero backend - all runs in browser
+-> Privacy-first: no data storage
 
 ## Description
 
@@ -17,6 +23,7 @@ This project is a WebAssembly application built using Rust and JavaScript. It le
 ## Running the Project
 
 To run the project, use the following command:
+
 ```bash
 cargo run
 ```
